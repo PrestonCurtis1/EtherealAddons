@@ -14,7 +14,6 @@ public class EtherealAddonsListener implements Listener {
         Player p = event.getPlayer();
         BendingPlayer bp = BendingPlayer.getBendingPlayer(p);
         if(event.isCancelled() || bp == null || !bp.canUseSubElement(Element.METAL) || !bp.isToggled() || !bp.isElementToggled(Element.EARTH) || p.getGameMode() == GameMode.SPECTATOR || bp.isOnCooldown("MetalDetector")){
-            p.sendMessage("conditions were not right");
             return;
         }else if (bp.getBoundAbilityName().equalsIgnoreCase("MetalDetector")) {
             new MetalDetector(p);

@@ -1,11 +1,6 @@
 package etherealcraft.unprankable01.etherealaddons.Earth.Metal;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.BlockPosition;
-import com.comphenix.protocol.wrappers.WrappedDataWatcher;
+
 import etherealcraft.unprankable01.etherealaddons.EtherealAddonsListener;
 
 import com.projectkorra.projectkorra.ProjectKorra;
@@ -17,20 +12,25 @@ import com.projectkorra.projectkorra.configuration.ConfigManager;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+//import org.bukkit.entity.Shulker;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.MagmaCube;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
+import org.bukkit.potion.PotionEffect;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+
+import static org.bukkit.potion.PotionEffectType.INVISIBILITY;
 
 public class MetalDetector extends MetalAbility implements AddonAbility {
     private Location eyeLoc;
     private Listener MDL;
     private long startTime;
+    private List<MagmaCube> highlighted = new ArrayList<>();
     private List<Location> oreList;
-    private final ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
     @Attribute(Attribute.COOLDOWN)
     private long cooldown;
     @Attribute(Attribute.DURATION)
@@ -58,7 +58,6 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
 
         eyeLoc = player.getEyeLocation();
         oreList = findOres(this.eyeLoc, this.reach);
-        player.sendMessage("" + oreList.size());
 
 
 
@@ -66,54 +65,36 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
     }
 
 
-
-
-
     public void setFields(){
-        this.cooldown = ConfigManager.defaultConfig.get().getLong(path + "Cooldown");
-        this.duration = ConfigManager.defaultConfig.get().getLong(path+"Duration");
-        this.reach = ConfigManager.defaultConfig.get().getInt(path+"Reach");
+        this.cooldown = ConfigManager.getConfig().getLong(path + "Cooldown");
+        this.duration = ConfigManager.getConfig().getLong(path+"Duration");
+        this.reach = ConfigManager.getConfig().getInt(path+"Reach");
     }
 
 
-    public void applyGlowingBlock(Player player, Location location) throws InvocationTargetException {
-        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_METADATA);
-
-        // Specify the block's position
-        BlockPosition blockPosition = new BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-        packet.getBlockPositionModifier().write(0, blockPosition);
-
-        // Set the entity ID to 0, indicating it's a block
-        packet.getIntegers().write(0, 0);
-
-        WrappedDataWatcher watcher = new WrappedDataWatcher();
-        WrappedDataWatcher.Serializer serializer = WrappedDataWatcher.Registry.get(Byte.class);
-
-        // Add the glowing effect to the data watcher for the block
-        watcher.setObject(new WrappedDataWatcher.WrappedDataWatcherObject(0, serializer), (byte) 0x40); // Set glowing flag
-
-        packet.getDataWatcherModifier().write(0, watcher);
-
-        protocolManager.sendServerPacket(player, packet);
+    public void applyGlowingBlock(Location blockloc) {
+        Location centerblockloc = blockloc.clone().add(-1.5, -2, -1.5);
+        // Spawn an invisible Shulker at the location
+        World world = centerblockloc.getWorld();
+        if (world == null) return; // Ensure world is not null
+        MagmaCube magmaCube = (MagmaCube) world.spawnEntity(centerblockloc.add(2,2,2), EntityType.MAGMA_CUBE);
+        PotionEffect effect = new PotionEffect(INVISIBILITY,10000/100*20,0,false,false,false);
+        magmaCube.addPotionEffect(effect);
+        magmaCube.setAI(false);
+        magmaCube.setInvulnerable(true);
+        magmaCube.setGravity(false);
+        magmaCube.setGlowing(true);
+        magmaCube.setCustomNameVisible(false);
+        magmaCube.setSilent(true);
+        magmaCube.setCollidable(false);
+        magmaCube.setSize(1);
+        // Schedule the removal of the MagmaCube after the duration (optional)
+        this.highlighted.add(magmaCube);
     }
-
 
 
     public boolean MetalBendable(Material material){
-        return loadMetalbendableBlocks().contains(material);
-    }
-
-
-    private Set<Material> loadMetalbendableBlocks() {
-        Set<Material> materials = new HashSet<>();
-        List<String> blockNames = ConfigManager.getConfig().getStringList("Properties.Earth.MetalBlocks");
-        for (String blockName : blockNames) {
-            Material material = Material.getMaterial(blockName);
-            if (material != null) {
-                materials.add(material);
-            }
-        }
-        return materials;
+        return isMetal(material);
     }
 
 
@@ -144,18 +125,16 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
         long elapsedTime = currentTime - startTime;
 
         // Check if a second has passed since the last countdown log
-        if (elapsedTime >= duration) {
+        if (elapsedTime >= duration | !player.isSneaking()) {
             // Ability duration has elapsed, deactivate the ability
             endMD();
-        }else{
-            for(Location ore : oreList){
-                try {
-                    applyGlowingBlock(player, ore);
-                } catch (InvocationTargetException e) {
-                    throw new RuntimeException(e);
+        }else {
+            // Check if oreList is empty before iterating over it
+            if (!oreList.isEmpty()) {
+                for (Location ore : oreList) {
+                    applyGlowingBlock(ore);
                 }
             }
-
         }
 
         // Ability logic for each tick goes here
@@ -164,6 +143,9 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
 
     public void endMD(){
         bPlayer.addCooldown(this);
+        for(MagmaCube highlight: this.highlighted){
+            highlight.remove();
+        }
         remove();
     }
 
@@ -174,7 +156,7 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
         // Clean up any resources or effects when the ability is manually stopped
         ProjectKorra.plugin.getServer().getPluginManager().removePermission(this.perm);
         HandlerList.unregisterAll(this.MDL);
-        super.remove();
+        endMD();
     }
 
 
