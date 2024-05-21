@@ -30,7 +30,7 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
     private Listener MDL;
     private long startTime;
     private List<Location> oreList;
-    private ProtocolManager protocolManager;
+    private final ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
     @Attribute(Attribute.COOLDOWN)
     private long cooldown;
     @Attribute(Attribute.DURATION)
@@ -41,20 +41,15 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
     static String path = "etherealcraft.unprankable01.etherealaddons.Earth.MetalDetector";
     public MetalDetector(Player player) {
         super(player);
-        player.sendMessage("MetalDetector Active");
         if (bPlayer.isOnCooldown(this)) {
-            player.sendMessage("MetalDetector on Cooldown");
             return;
         }
         if (!bPlayer.canBend(this)) {
-            player.sendMessage("you can't bend");
             return;
         }
         if (hasAbility(player, MetalDetector.class)) {
-            player.sendMessage("you have metal Detector");
             MetalDetector md = getAbility(player, MetalDetector.class);
             if (md.isStarted()) {
-                player.sendMessage("MetalDetector Already Started");
                 return;
             }
         }
@@ -62,14 +57,12 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
         setFields();
 
         eyeLoc = player.getEyeLocation();
-        player.sendMessage("" + this.reach);
         oreList = findOres(this.eyeLoc, this.reach);
         player.sendMessage("" + oreList.size());
 
 
 
         start();
-        player.sendMessage("MetalDetector Has now started");
     }
 
 
@@ -253,7 +246,6 @@ public class MetalDetector extends MetalAbility implements AddonAbility {
         // Log that the ability has been loaded
         perm = new Permission("bending.ability.MetalDetector");
         perm.setDefault(PermissionDefault.TRUE);
-        this.protocolManager = ProtocolLibrary.getProtocolManager();
         ProjectKorra.log.info(this.getName() + " by " + this.getAuthor() + " " + this.getVersion() + " has been loaded!");
 
     }
