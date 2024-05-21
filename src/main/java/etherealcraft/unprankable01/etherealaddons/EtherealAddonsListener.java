@@ -10,15 +10,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 public class EtherealAddonsListener implements Listener {
     @EventHandler
-    public void onSneak(PlayerToggleSneakEvent event) {
+    public void MetalDetectorListener(PlayerToggleSneakEvent event) {
         Player p = event.getPlayer();
-        p.damage(100);
-        ProjectKorra.log.info(p.getName() + "Your dead");
-        System.out.println("Hello, world you just snook");
+        p.sendMessage("Hello, " + p.getName());
         BendingPlayer bp = BendingPlayer.getBendingPlayer(p);
-        if(event.isCancelled() || bp == null || !bp.canUseSubElement(Element.METAL) || !bp.isToggled() || !bp.isElementToggled(Element.EARTH) || p.getGameMode() == GameMode.SPECTATOR || p.isSneaking() || bp.isOnCooldown("MetalDetector")){
+        if(event.isCancelled() || bp == null || !bp.canUseSubElement(Element.METAL) || !bp.isToggled() || !bp.isElementToggled(Element.EARTH) || p.getGameMode() == GameMode.SPECTATOR || bp.isOnCooldown("MetalDetector")){
+            p.sendMessage("conditions were not right");
             return;
         }else if (bp.getBoundAbilityName().equalsIgnoreCase("MetalDetector")) {
+            p.sendMessage("Conditions Were Correct");
             new MetalDetector(p);
         }
     }
